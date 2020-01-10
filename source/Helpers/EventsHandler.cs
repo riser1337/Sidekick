@@ -34,8 +34,8 @@ namespace Sidekick.Helpers
             }
             else if (!OverlayController.IsDisplayed && e.Modifiers == Keys.Control && e.KeyCode == Keys.D)
             {
-                if (!ProcessHelper.IsPathOfExileInFocus())
-                    return;
+                //if (!ProcessHelper.IsPathOfExileInFocus())
+                //    return;
 
                 e.Handled = true;
                 Task.Run(TriggerItemFetch);

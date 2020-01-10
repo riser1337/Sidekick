@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using Sidekick.Helpers.Localization;
 using Sidekick.Helpers.POETradeAPI;
 using MoreLinq;
+using System.Globalization;
 
 namespace Sidekick.Helpers
 {
@@ -254,9 +255,9 @@ namespace Sidekick.Helpers
             return InfluenceType.None;
         }
 
-        internal static List<POETradeAPI.Models.TradeData.Attribute> GetItemStats(string text)
+        internal static List<Stat> GetItemStats(string text)
         {
-            List<POETradeAPI.Models.TradeData.Attribute> stats = new List<POETradeAPI.Models.TradeData.Attribute>();
+            List<Stat> stats = new List<Stat>();
 
             var properties = text.Split(PROPERTY_SEPERATOR, StringSplitOptions.RemoveEmptyEntries).ToList();
             foreach (var prop in properties)
@@ -276,6 +277,18 @@ namespace Sidekick.Helpers
 
                 foreach (var line in lines)
                 {
+                    Stat stat = new Stat();
+                    double val = 0;
+                    var matches = Regex.Matches(line, @"([\+\-\d.]+)");
+                    if (matches.Count > 0)
+                    {
+                        foreach (Match match in matches)
+                        {
+                            val += Convert.ToDouble(match.Value, new CultureInfo("en-US"));
+                        }
+                        val /= matches.Count;
+                    }
+
                     var search = Regex.Replace(line, @"([\+\-\d.]+)", "#");
                     if (search.EndsWith(" (implicit)"))
                     {
@@ -283,7 +296,12 @@ namespace Sidekick.Helpers
                         var category = TradeClient.AttributeCategories.FirstOrDefault(x => x.Label.Contains("Implicit"));
                         var res = category?.Entries.FirstOrDefault(x => x.Text == search);
                         if (res != null)
-                            stats.Add(res);
+                        {
+                            stat.Category = category.Label;
+                            stat.Attribute = res;
+                            stat.ActualValue = val;
+                            stats.Add(stat);
+                        }
                     }
                     else if (search.EndsWith(" (crafted)"))
                     {
@@ -291,7 +309,12 @@ namespace Sidekick.Helpers
                         var category = TradeClient.AttributeCategories.FirstOrDefault(x => x.Label.Contains("Crafted"));
                         var res = category?.Entries.FirstOrDefault(x => x.Text == search);
                         if (res != null)
-                            stats.Add(res);
+                        {
+                            stat.Category = category.Label;
+                            stat.Attribute = res;
+                            stat.ActualValue = val;
+                            stats.Add(stat);
+                        }
                     }
                     else if (search.EndsWith(" (fractured)"))
                     {
@@ -299,17 +322,25 @@ namespace Sidekick.Helpers
                         var category = TradeClient.AttributeCategories.FirstOrDefault(x => x.Label.Contains("Fractured"));
                         var res = category?.Entries.FirstOrDefault(x => x.Text == search);
                         if (res != null)
-                            stats.Add(res);
+                        {
+                            stat.Category = category.Label;
+                            stat.Attribute = res;
+                            stat.ActualValue = val;
+                            stats.Add(stat);
+                        }
                     }
                     else
                     {
                         //Find Properties
                         foreach (var cat in TradeClient.AttributeCategories.Where(x => x.Label == "Pseudo" || x.Label == "Explicit" || x.Label == "Enchant" || x.Label == "Monster" || x.Label == "Delve" || x.Label == "Veiled"))
                         {
-                            var res = cat.Entries.FirstOrDefault(x => x.Text.StartsWith(search));
+                            var res = cat.Entries.FirstOrDefault(x => x.Text == search || x.Text == $"{search} (local)");
                             if (res != null)
                             {
-                                stats.Add(res);
+                                stat.Category = cat.Label;
+                                stat.Attribute = res;
+                                stat.ActualValue = val;
+                                stats.Add(stat);
                             }
                         }
                     }
@@ -337,14 +368,14 @@ namespace Sidekick.Helpers
         public SocketFilterOption Sockets { get; set; }
         public SocketFilterOption Links { get; set; }
 
-        private List<POETradeAPI.Models.TradeData.Attribute> _Stats;
-        public List<POETradeAPI.Models.TradeData.Attribute> Stats
+        private List<Stat> _Stats;
+        public List<Stat> Stats
         {
             get
             {
                 if (_Stats == null)
                 {
-                    _Stats = new List<POETradeAPI.Models.TradeData.Attribute>();
+                    _Stats = new List<Stat>();
                 }
                 return _Stats;
             }
@@ -380,4 +411,13 @@ namespace Sidekick.Helpers
         public string Rarity { get; set; }
         public string IsBlight { get; set; }
     }
+
+
+    public class Stat
+    {
+        public string Category { get; set; }
+        public POETradeAPI.Models.TradeData.Attribute Attribute { get; set; }
+        public double ActualValue { get; set; }
+    }
 }
+
